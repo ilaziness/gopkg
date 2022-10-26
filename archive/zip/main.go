@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"compress/flate"
+	"compress/gzip"
 	"compress/zlib"
 	"fmt"
 	"io"
@@ -10,8 +11,44 @@ import (
 	"os"
 )
 
+var (
+	// 一个method id就代表一种压缩算法，所以要用其他压缩算法，要定义一个对应的method id
+	method_zlib uint16 = 10
+	method_gzip uint16 = 11
+)
+
 func main() {
+	// 生成的zip压缩文件默认是compress/flate压缩算法
+
+	//这里注册一下用zlib,gzip压缩算法来压缩，下面才能用method id注册使用
+
+	// zlib
+	zip.RegisterCompressor(method_zlib, func(out io.Writer) (io.WriteCloser, error) {
+		return zlib.NewWriterLevel(out, flate.BestCompression)
+	})
+	zip.RegisterDecompressor(method_zlib, func(re io.Reader) io.ReadCloser {
+		read, err := zlib.NewReader(re)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return read
+	})
+
+	// gzip
+	zip.RegisterCompressor(method_gzip, func(out io.Writer) (io.WriteCloser, error) {
+		return gzip.NewWriterLevel(out, gzip.BestCompression)
+	})
+	zip.RegisterDecompressor(method_gzip, func(re io.Reader) io.ReadCloser {
+		read, err := gzip.NewReader(re)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return read
+	})
+
+	// 生成用zlib,gzip压缩的压缩包可以正常读取，用操作系统的资源管理器也是可以正常解压。
 	write()
+
 	read()
 }
 
@@ -29,23 +66,25 @@ func write() {
 	defer zipFile.Close()
 	w := zip.NewWriter(zipFile)
 
-	//压缩
-	/*
-		w.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
-			return gzip.NewWriterLevel(out, gzip.BestCompression)
-		})
-	*/
-	w.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
-		return zlib.NewWriterLevel(out, flate.BestCompression)
+	//文件名最后加斜杠会创建目录
+	w.Create("test/")
+
+	//注册压缩
+	w.RegisterCompressor(method_gzip, func(out io.Writer) (io.WriteCloser, error) {
+		return gzip.NewWriterLevel(out, gzip.BestCompression)
 	})
+
+	// w.RegisterCompressor(method_zlib, func(out io.Writer) (io.WriteCloser, error) {
+	// 	return zlib.NewWriterLevel(out, flate.BestCompression)
+	// })
 
 	// Add some files to the archive.
 	var files = []struct {
 		Name, Body string
 	}{
-		{"readme.txt", "This archive contains some text files."},
-		{"gopher.txt", "Gopher names:\nGeorge\nGeoffrey\nGonzo"},
-		{"todo.txt", "Get animal handling licence.\nWrite more examples."},
+		{"test/readme.txt", "This archive contains some text files."},
+		{"test/gopher.txt", "Gopher names:\nGeorge\nGeoffrey\nGonzo"},
+		{"test/todo.txt", "Get animal handling licence.\nWrite more examples."},
 	}
 	for _, file := range files {
 		// 添加一个zip文件，名称要用相对路径
@@ -67,6 +106,8 @@ func write() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	//f.Write 可以多次调用，持续往一个文件里面写数据
 	_, err = f.Write(fileContent)
 	if err != nil {
 		log.Fatal(err)
@@ -89,22 +130,21 @@ func read() {
 	defer r.Close()
 
 	// 注册解压缩算法
-	/*
-		r.RegisterDecompressor(zip.Deflate, func(re io.Reader) io.ReadCloser {
-			read, err := gzip.NewReader(re)
-			if err != nil {
-				log.Fatal(err)
-			}
-			return read
-		})
-	*/
-	r.RegisterDecompressor(zip.Deflate, func(re io.Reader) io.ReadCloser {
-		read, err := zlib.NewReader(re)
+	r.RegisterDecompressor(method_gzip, func(re io.Reader) io.ReadCloser {
+		read, err := gzip.NewReader(re)
 		if err != nil {
 			log.Fatal(err)
 		}
 		return read
 	})
+
+	// r.RegisterDecompressor(method_zlib, func(re io.Reader) io.ReadCloser {
+	// 	read, err := zlib.NewReader(re)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	return read
+	// })
 
 	// Iterate through the files in the archive,
 	// printing some of their contents.
@@ -115,6 +155,7 @@ func read() {
 			log.Fatal(err)
 		}
 		_, err = io.Copy(os.Stdout, rc)
+		// CopyN如果读取的长度超过了文件总长度会返回EOF错误
 		//_, err = io.CopyN(os.Stdout, rc, 68)
 		if err != nil && err != io.EOF {
 			log.Fatal(err)

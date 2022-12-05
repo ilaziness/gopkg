@@ -26,9 +26,9 @@ import (
 // 输入一次性密钥，提交验证即可
 
 func main() {
-	log.Println("HTOP:")
+	log.Println("TOTP:")
 	testTOTP()
-	log.Println("HTOP:")
+	log.Println("\nHOTP:")
 	testHOTP()
 }
 
@@ -73,6 +73,7 @@ func validateCode(secretKey string) {
 	fmt.Print("输入验证码：")
 	fmt.Scan(&passcode)
 	valid := totp.Validate(passcode, secretKey)
+	log.Println("input:", passcode)
 	if valid {
 		log.Println("test@gmail.com", secretKey)
 	} else {

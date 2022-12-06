@@ -63,13 +63,17 @@ func (zkc *ZKClient) Register(ctx context.Context, path string, data []byte) err
 			if exists {
 				// 添加一个watch，监控变化
 				exists, _, watchEvt, err = zkc.conn.ExistsW(regPath)
-				if err != nil && err != zk.ErrNoNode {
+				switch err {
+				case zk.ErrClosing, zk.ErrConnectionClosed:
+					time.Sleep(time.Second * 5)
+				default:
 					zkc.conn.Delete(regPath, -1)
 					exists = false
 					time.Sleep(time.Second * 1)
 					continue
 				}
 			}
+
 			if !exists {
 				// 注册节点
 				regPath, err = zkc.createRegNode(path, data)
@@ -81,6 +85,7 @@ func (zkc *ZKClient) Register(ctx context.Context, path string, data []byte) err
 				exists = true
 				continue
 			}
+
 			select {
 			case <-ctx.Done():
 				log.Println("service register exit")
@@ -109,12 +114,22 @@ func (zkc *ZKClient) createRegNode(path string, data []byte) (string, error) {
 	}
 	if !exists {
 		// 创建父节点
-		_, err = zkc.conn.Create(parentPath, []byte(""), 0, zkc.acl)
-		if err != nil && err != zk.ErrNodeExists {
-			return "", err
+		tmpPath := ""
+		for _, p := range pathPart[1 : len(path)-1] {
+			tmpPath += "/" + p
+			e, _, err := zkc.conn.Exists(tmpPath)
+			if err != nil {
+				return "", err
+			}
+			if e {
+				continue
+			}
+			_, err = zkc.conn.Create(tmpPath, []byte{}, 0, zkc.acl)
+			if err != nil && err != zk.ErrNodeExists {
+				return "", err
+			}
 		}
 	}
-	// todo 开协程监控注册节点是否存在
 	return zkc.conn.CreateProtectedEphemeralSequential(path, data, zkc.acl)
 }
 

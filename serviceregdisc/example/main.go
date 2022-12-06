@@ -24,7 +24,7 @@ func main() {
 	servers := make(map[string]*serviceregdisc.Server)
 	service := []string{"user", "product"}
 	for _, id := range service {
-		ser, err := serviceregdisc.NewServerDiscover(ctx, id, *regdisc)
+		ser, err := serviceregdisc.NewServerDiscover(ctx, regdisc.GetServicePath(id), *regdisc)
 		if err != nil {
 			log.Fatalln(err)
 		}

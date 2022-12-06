@@ -51,6 +51,11 @@ type RegisterDiscovery struct {
 	prefix string //通常是系统id
 }
 
+// GetServicePath 获取服务路径
+func (rd *RegisterDiscovery) GetServicePath(id string) string {
+	return fmt.Sprintf("%s/%s/%s", rd.prefix, RootPath, id)
+}
+
 // Register 服务注册
 // id 服务ID，info 服务信息
 func (rd *RegisterDiscovery) Register(ctx context.Context, id string, info ServerInfo) error {
@@ -68,6 +73,7 @@ type DiscoverEvent struct {
 }
 
 // Discovery 服务发现
+// DiscoverEvent 有变化是通过chan DiscoverEvent 通知
 // path:要发现的服务，比如/cc/service/endpoint/user 用户服务
 func (rd *RegisterDiscovery) Discovery(ctx context.Context, path string) (<-chan *DiscoverEvent, error) {
 	event := make(chan *DiscoverEvent, 1)

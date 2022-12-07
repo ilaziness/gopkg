@@ -2,6 +2,7 @@ package serviceregdisc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 )
@@ -51,10 +52,23 @@ func (s *Server) run() {
 	go func() {
 		for ser := range s.discoverEvent {
 			fmt.Println("discover received event", s.path)
-			s.Lock()
-			s.servers = ser.Server
-			s.total = len(s.servers)
-			s.Unlock()
+			s.updateServers(ser.Server)
 		}
 	}()
+}
+
+func (s *Server) updateServers(data [][]byte) {
+	servers := make([]*ServerInfo, 0)
+	for _, val := range data {
+		serverInfo := &ServerInfo{}
+		err := json.Unmarshal(val, serverInfo)
+		if err != nil {
+			fmt.Println("unmarshal server info error:", err)
+		}
+		servers = append(servers, serverInfo)
+	}
+	s.Lock()
+	s.servers = servers
+	s.total = len(s.servers)
+	s.Unlock()
 }

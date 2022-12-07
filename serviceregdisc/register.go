@@ -69,7 +69,7 @@ func (rd *RegisterDiscovery) Register(ctx context.Context, id string, info Serve
 }
 
 type DiscoverEvent struct {
-	Server []*ServerInfo
+	Server [][]byte
 }
 
 // Discovery 服务发现

@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -50,7 +49,7 @@ func NewZKClient(host []string, user, pass string) (*ZKClient, error) {
 // 先创建节点/cc/service/endpoint/user，再创建临时节点/cc/service/endpoint/user/192.168.2.1
 // 服务信息创建临时节点的作用是如果服务不可用了，会话超时被销毁，注册的节点也会被销毁，起到了监控服务存活的作用
 // 所以服务注册之后需要开一个协程，主动探测节点注册是否存在，不存在则再注册
-// CreateProtectedEphemeralSequential 是创建受保护的临时节点，作用是如果服务器崩溃了，重连到其他服务器可以继续保持前一个服务器的会话
+// CreateProtectedEphemeralSequential 是创建受保护的临时顺序节点，作用是如果服务器崩溃了，重连到其他服务器可以继续保持前一个服务器的会话
 func (zkc *ZKClient) Register(ctx context.Context, path string, data []byte) error {
 	go func() {
 		var (
@@ -140,6 +139,8 @@ func (zkc *ZKClient) addAuth() error {
 }
 
 // Discovery 服务发现
+// 给需要服务发现的服务添加一个watch，当服务信息发送变化时重新获取
+// 服务器信息通过chan传递
 func (zkc *ZKClient) Discovery(ctx context.Context, path string, event chan *serviceregdisc.DiscoverEvent) {
 	for {
 		// 设置一个watch
@@ -149,8 +150,10 @@ func (zkc *ZKClient) Discovery(ctx context.Context, path string, event chan *ser
 			_, _, watchEvt, err = zkc.conn.ChildrenW(path)
 		}
 		if err != nil {
+			// 要监控的服务不存在，等待后重新获取
 			log.Printf("discover watch error: %s\n", err)
 			time.Sleep(time.Second * 5)
+			continue
 		}
 		// 第一次主动获取一次服务信息
 		// 后面当服务信息有变化时，将会发生watchEvt事件，触发再次获取
@@ -183,13 +186,7 @@ func (zkc *ZKClient) getServerInfoByPath(path string) *serviceregdisc.DiscoverEv
 			log.Printf("discover get server info node error: %s\n", err)
 			continue
 		}
-		serverInfo := &serviceregdisc.ServerInfo{}
-		err = json.Unmarshal(nodeData, serverInfo)
-		if err != nil {
-			log.Printf("discover unmarshal server info error: %s", err)
-			continue
-		}
-		eventData.Server = append(eventData.Server, serverInfo)
+		eventData.Server = append(eventData.Server, nodeData)
 	}
 	return eventData
 }

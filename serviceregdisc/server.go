@@ -3,7 +3,7 @@ package serviceregdisc
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log"
 	"sync"
 )
 
@@ -17,6 +17,9 @@ func NewServerDiscover(ctx context.Context, path string, discover RegisterDiscov
 	ser := &Server{
 		path:          path,
 		discoverEvent: eventChan,
+		servers:       make([]*ServerInfo, 0),
+		index:         0,
+		total:         0,
 	}
 	ser.run()
 	return ser, nil
@@ -51,7 +54,7 @@ func (s *Server) GetServer() string {
 func (s *Server) run() {
 	go func() {
 		for ser := range s.discoverEvent {
-			fmt.Println("discover received event", s.path)
+			// 拿到空数据，清空服务列表
 			s.updateServers(ser.Server)
 		}
 	}()
@@ -63,7 +66,7 @@ func (s *Server) updateServers(data [][]byte) {
 		serverInfo := &ServerInfo{}
 		err := json.Unmarshal(val, serverInfo)
 		if err != nil {
-			fmt.Println("unmarshal server info error:", err)
+			log.Println("unmarshal server info error:", err)
 		}
 		servers = append(servers, serverInfo)
 	}
@@ -71,4 +74,8 @@ func (s *Server) updateServers(data [][]byte) {
 	s.servers = servers
 	s.total = len(s.servers)
 	s.Unlock()
+	log.Printf("path: %s, update servers\n", s.path)
+	for _, sv := range s.servers {
+		log.Printf("path: %s, %#v", s.path, sv)
+	}
 }

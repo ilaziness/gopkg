@@ -62,14 +62,16 @@ func (zkc *ZKClient) Register(ctx context.Context, path string, data []byte) err
 			if exists {
 				// 添加一个watch，监控变化
 				exists, _, watchEvt, err = zkc.conn.ExistsW(regPath)
-				switch err {
-				case zk.ErrClosing, zk.ErrConnectionClosed:
-					time.Sleep(time.Second * 5)
-				default:
-					zkc.conn.Delete(regPath, -1)
-					exists = false
-					time.Sleep(time.Second * 1)
-					continue
+				if err != nil {
+					switch err {
+					case zk.ErrClosing, zk.ErrConnectionClosed:
+						time.Sleep(time.Second * 5)
+					default:
+						zkc.conn.Delete(regPath, -1)
+						exists = false
+						time.Sleep(time.Second * 5)
+						continue
+					}
 				}
 			}
 
@@ -81,6 +83,7 @@ func (zkc *ZKClient) Register(ctx context.Context, path string, data []byte) err
 					time.Sleep(time.Second * 1)
 					continue
 				}
+				log.Printf("register path: %s, zk path: %s\n", path, regPath)
 				exists = true
 				continue
 			}
@@ -88,6 +91,8 @@ func (zkc *ZKClient) Register(ctx context.Context, path string, data []byte) err
 			select {
 			case <-ctx.Done():
 				log.Println("service register exit")
+				zkc.conn.Delete(regPath, -1)
+				zkc.conn.Close()
 				return
 			case e := <-watchEvt:
 				log.Printf("watch register node(%s) exist changed, event(%v)\n", path, e)
@@ -102,7 +107,7 @@ func (zkc *ZKClient) Register(ctx context.Context, path string, data []byte) err
 // createRegNode 创建注册节点
 func (zkc *ZKClient) createRegNode(path string, data []byte) (string, error) {
 	pathPart := strings.Split(path, "/")
-	parentPath := strings.Join(pathPart[:len(path)-1], "/")
+	parentPath := strings.Join(pathPart[:len(pathPart)-1], "/")
 	exists, _, err := zkc.conn.Exists(parentPath)
 	if err != nil && err == zk.ErrNoAuth {
 		zkc.addAuth()
@@ -114,7 +119,7 @@ func (zkc *ZKClient) createRegNode(path string, data []byte) (string, error) {
 	if !exists {
 		// 创建父节点
 		tmpPath := ""
-		for _, p := range pathPart[1 : len(path)-1] {
+		for _, p := range pathPart[1 : len(pathPart)-1] {
 			tmpPath += "/" + p
 			e, _, err := zkc.conn.Exists(tmpPath)
 			if err != nil {
@@ -150,8 +155,12 @@ func (zkc *ZKClient) Discovery(ctx context.Context, path string, event chan *ser
 			_, _, watchEvt, err = zkc.conn.ChildrenW(path)
 		}
 		if err != nil {
-			// 要监控的服务不存在，等待后重新获取
-			log.Printf("discover watch error: %s\n", err)
+			if err == zk.ErrNoNode {
+				// 要监控的服务不存在，等待后重新获取
+				log.Printf("path: %s is not exists, will watch after 5s\n", path)
+			} else {
+				log.Printf("path: %s, discover watch error: %s\n", path, err)
+			}
 			time.Sleep(time.Second * 5)
 			continue
 		}
@@ -173,7 +182,7 @@ func (zkc *ZKClient) Discovery(ctx context.Context, path string, event chan *ser
 // getServerInfoByPath 获取指定路径下的服务信息
 // 比如/cc/service/endpoint/user 用户服务，会获取到所有user服务的所有服务节点信息
 func (zkc *ZKClient) getServerInfoByPath(path string) *serviceregdisc.DiscoverEvent {
-	eventData := &serviceregdisc.DiscoverEvent{}
+	eventData := &serviceregdisc.DiscoverEvent{Server: make([][]byte, 0)}
 	nodes, _, err := zkc.conn.Children(path)
 	if err != nil {
 		log.Printf("discover get service node error: %s\n", err)

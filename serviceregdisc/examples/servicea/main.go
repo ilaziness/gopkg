@@ -24,25 +24,25 @@ func newReg(id string) {
 	fmt.Println("input port:")
 	fmt.Scan(&port)
 
-	zkHost := []string{"127.0.0.1:2181"}
+	//zkHost := []string{"127.0.0.1:2181"}
 	etcdHost := []string{"127.0.0.1:2379"}
 	user := "test"
 	pass := "test"
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// zk client
-	clt, err := client.NewZKClient(zkHost, user, pass)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// clt, err := client.NewZKClient(zkHost, user, pass)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
 	// etcd client
 	clietcd, err := client.NewEtcdClient(ctx, etcdHost, user, pass)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	regdisc := serviceregdisc.NewRegDisc("crm", clt)
-	regdisc = serviceregdisc.NewRegDisc("crm", clietcd)
+	//regdisc := serviceregdisc.NewRegDisc("crm", clt)
+	regdisc := serviceregdisc.NewRegDisc("crm", clietcd)
 
 	// register
 	serverInfo := serviceregdisc.ServerInfo{

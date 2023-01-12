@@ -74,7 +74,7 @@ type DiscoverEvent struct {
 }
 
 // Discovery 服务发现
-// DiscoverEvent 有变化是通过chan DiscoverEvent 通知
+// DiscoverEvent 通过chan DiscoverEvent 通知服务信息变更
 // path:要发现的服务，比如/cc/service/endpoint/user 用户服务
 func (rd *RegisterDiscovery) Discovery(ctx context.Context, path string) (<-chan *DiscoverEvent, error) {
 	event := make(chan *DiscoverEvent, 1)

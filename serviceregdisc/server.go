@@ -31,17 +31,16 @@ type Server struct {
 	index         int
 	total         int
 	path          string
-	servers       []*ServerInfo // 服务节点
+	servers       []*ServerInfo // 服务节点列表
 	discoverEvent <-chan *DiscoverEvent
 }
 
-// GetServer 获取一个服务链接
-// 从服务的所有节点里面获取一个节点
+// GetServer 获取一个服务地址
+// 从服务的所有节点里面获取一个节点，通过轮询的方式返回服务地址
 func (s *Server) GetServer() string {
 	if s.total == 0 {
 		return ""
 	}
-	// 循环返回节点
 	if s.index >= s.total {
 		s.index = 0
 	}
@@ -54,7 +53,7 @@ func (s *Server) GetServer() string {
 func (s *Server) run() {
 	go func() {
 		for ser := range s.discoverEvent {
-			// 拿到空数据，清空服务列表
+			// 如果拿到空数据，则清空服务列表
 			s.updateServers(ser.Server)
 		}
 	}()

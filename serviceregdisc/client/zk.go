@@ -47,8 +47,7 @@ func NewZKClient(host []string, user, pass string) (*ZKClient, error) {
 // example:
 // path: /cc/service/endpoint/user/192.168.2.1
 // 先创建节点/cc/service/endpoint/user，再创建临时节点/cc/service/endpoint/user/192.168.2.1
-// 服务信息创建临时节点的作用是如果服务不可用了，会话超时被销毁，注册的节点也会被销毁，起到了监控服务存活的作用
-// 所以服务注册之后需要开一个协程，主动探测节点注册是否存在，不存在则再注册
+// 服务信息创建临时节点的作用是如果服务不可用了，会话超时被销毁，注册的节点也会被销毁，起到了监控服务存活的目的
 // CreateProtectedEphemeralSequential 是创建受保护的临时顺序节点，作用是如果服务器崩溃了，重连到其他服务器可以继续保持前一个服务器的会话
 func (zkc *ZKClient) Register(ctx context.Context, path string, data []byte) error {
 	go func() {
@@ -144,7 +143,7 @@ func (zkc *ZKClient) addAuth() error {
 }
 
 // Discovery 服务发现
-// 给需要服务发现的服务添加一个watch，当服务信息发送变化时重新获取
+// 添加一个watch，当服务信息发生变化时重新获取
 // 服务器信息通过chan传递
 func (zkc *ZKClient) Discovery(ctx context.Context, path string, event chan *serviceregdisc.DiscoverEvent) {
 	for {

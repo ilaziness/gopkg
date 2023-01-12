@@ -43,48 +43,80 @@ func NewEtcdClient(ctx context.Context, endpoints []string, user, pass string) (
 // path: /cc/service/endpoint/user/192.168.2.1
 // path作为数据存储key，带租约存储数据，定时续期，续期的相当于心跳的作用，服务失效了，租约过期，数据会被删除，节点信息也就不存在了
 func (e *EtcdClient) Register(ctx context.Context, path string, data []byte) error {
-	lease, err := e.createLease()
-	if err != nil {
-		return err
-	}
-	kv := clientv3.NewKV(e.client)
-	_, err = kv.Put(ctx, path, string(data), clientv3.WithLease(lease.ID))
-	return err
-}
+	var (
+		lease     = clientv3.NewLease(e.client)
+		leaseResp *clientv3.LeaseGrantResponse
+		karChan   <-chan *clientv3.LeaseKeepAliveResponse
+		err       error
+	)
 
-// createLease 创建租约
-func (e *EtcdClient) createLease() (*clientv3.LeaseGrantResponse, error) {
-	lease := clientv3.NewLease(e.client)
-	// 创建10s租约
-	leaseResp, err := lease.Grant(e.ctx, 10)
-	if err != nil {
-		return nil, err
-	}
-
-	// 续期租约
-	karChan, err := lease.KeepAlive(e.ctx, leaseResp.ID)
 	go func() {
+		// watch key
+		watcher := clientv3.NewWatcher(e.client)
+		watchChan := watcher.Watch(ctx, path)
+
+		leaseCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		for {
-			select {
-			case <-e.ctx.Done():
-				log.Println("ctx cancel")
-				lease.Close()
-				e.client.Close()
-				return
-			case resp := <-karChan:
-				if resp == nil {
-					log.Println("租约已关闭")
-					return
+			if leaseResp == nil {
+				log.Print("lease")
+				// 创建10s租约
+				leaseResp, err = lease.Grant(leaseCtx, 10)
+				if err != nil {
+					log.Printf("etcd: create lease fail, path: %s, error: %s, will retry after 5s", path, err)
+					time.Sleep(5 * time.Second)
+					continue
 				}
-				log.Println("租约续租成功")
+
+				//租约续期
+				karChan, err = lease.KeepAlive(leaseCtx, leaseResp.ID)
+				if err != nil {
+					log.Printf("etcd: keepalive lease fail, path: %s, error: %s, will retry after 5s", path, err)
+					time.Sleep(5 * time.Second)
+					continue
+				}
+			}
+
+			// 注册节点数据
+			kv := clientv3.NewKV(e.client)
+			_, err = kv.Put(ctx, path, string(data), clientv3.WithLease(leaseResp.ID))
+			log.Println("put data")
+			if err != nil {
+				log.Printf("etcd: register node fail, path: %s, error: %s, will retry after 5s\n", path, err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+		loop:
+			for {
+				select {
+				case <-ctx.Done():
+					log.Println("ctx cancel")
+					lease.Close()
+					e.client.Close()
+					return
+				case <-karChan:
+					// 租约续租成功
+				case ev := <-watchChan:
+					// key或者租约被删除，可以再次主动注册
+					for _, event := range ev.Events {
+						if event.Type == mvccpb.DELETE {
+							resp, err := lease.TimeToLive(ctx, leaseResp.ID)
+							if err != nil {
+								log.Println("etcd: get lease time to live error:", err)
+							}
+							if resp.TTL == -1 {
+								leaseResp = nil
+							}
+							log.Printf("key %s delete", path)
+							break loop
+						}
+					}
+				}
 			}
 		}
 	}()
-
-	if err != nil {
-		return nil, err
-	}
-	return leaseResp, nil
+	return nil
 }
 
 // Discovery 服务发现
@@ -125,7 +157,6 @@ func (e *EtcdClient) getServerInfo(path string) serverInfo {
 		return info
 	}
 	if resp == nil || resp.Kvs == nil {
-		log.Println("etcd Discovery get key error: resp is nil")
 		return info
 	}
 	for i := range resp.Kvs {

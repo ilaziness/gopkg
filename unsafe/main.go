@@ -52,7 +52,8 @@ func main() {
 
 	// string byte零拷贝互相转换，go版本>=1.20
 	s := "abc"
-	b := []byte("efgh")
+	//b := []byte("efgh")
+	b := []byte{'e', 'f', 'g', 'h'}
 	fmt.Println(s, StringToBytes(s))
 	fmt.Println(b, BytesToString(b))
 	fmt.Println(b, BytesToString2(b))

@@ -1,6 +1,6 @@
 module github.com/ilaziness/gopkg
 
-go 1.18
+go 1.20
 
 require (
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect

@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+// 编译 protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative .\proto\hello.proto
+
+package hello;
+
+option go_package ="github.com/ilaziness/gopkg/grpc/proto";
+
+service Hello {
+    // 普通RPC
+    rpc Ping(Req) returns (Resp) {} 
+    // 服务端流RPC
+    rpc Sss(Req) returns (stream Resp) {}
+
+    // 客户端流
+    rpc Css(stream Req) returns (Resp) {}
+
+    // 双向流
+    rpc Bs(stream Req) returns(stream Resp) {}
+}
+
+// 定义请求数据结构
+message Req {
+    string msg = 1;
+}
+
+
+// 定义响应请求结构
+message Resp {
+    string msg = 1;
+}

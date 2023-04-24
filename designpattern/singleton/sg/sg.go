@@ -19,7 +19,7 @@ type messagePool struct {
 var msgPool = &messagePool{
 	pool: &sync.Pool{
 		New: func() any {
-			return Message{}
+			return &Message{}
 		},
 	},
 }

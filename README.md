@@ -1,2 +1,3 @@
 # gopkg
-Usage of common packages in go
+
+Code snippet and usage of packages in go

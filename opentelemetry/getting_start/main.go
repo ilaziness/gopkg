@@ -35,7 +35,7 @@ func newExporter(w io.Writer) (trace.SpanExporter, error) {
 	)
 }
 
-// newResource 返回一个resource
+// newResource 返回一个描述应用的resource
 // resource 表示生成的遥测实体
 func newResource() *resource.Resource {
 	r, _ := resource.Merge(
@@ -68,15 +68,16 @@ func main() {
 	}
 
 	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exp),
+		trace.WithBatcher(exp), //使用了BatchSpanProcessor
 		trace.WithResource(newResource()),
 	)
 	defer func() {
+		// 刷出（flush）和停止TracerProvider
 		if err := tp.Shutdown(context.Background()); err != nil {
 			l.Fatal(err)
 		}
 	}()
-	// 全局注册TracerProvider
+	// 注册全局TracerProvider
 	otel.SetTracerProvider(tp)
 
 	sigCh := make(chan os.Signal, 1)

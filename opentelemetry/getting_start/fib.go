@@ -7,6 +7,8 @@ func Fibonacci(n uint) (uint64, error) {
 	if n <= 1 {
 		return uint64(n), nil
 	}
+
+	// 不能计算的数
 	if n > 93 {
 		return 0, fmt.Errorf("unsupported fibonacci number %d: too large", n)
 	}

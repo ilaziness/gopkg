@@ -1,0 +1,12 @@
+
+- adapter      适配器模式
+- bridge       桥接模式
+- builder      建造者模式
+- composite    组合模式
+- decorator    装饰模式
+- facade       外观模式
+- factory      工厂模式，抽象工厂模式
+- flyweight    享元模式
+- prototype    原型模式
+- proxy        代理模式
+- singleton    单例模式

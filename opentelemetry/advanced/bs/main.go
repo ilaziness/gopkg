@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -24,13 +24,12 @@ const serviceId = "BsService"
 // tracer Tracer
 var tracer trace.Tracer
 
-// newExport create export
-func newExporter(w io.Writer) (sdktrace.SpanExporter, error) {
-	return stdouttrace.New(
-		stdouttrace.WithWriter(w),
-		stdouttrace.WithPrettyPrint(),
-		stdouttrace.WithoutTimestamps(),
-	)
+func newExporter(url string) (sdktrace.SpanExporter, error) {
+	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
+	if err != nil {
+		return nil, err
+	}
+	return exp, nil
 }
 
 // newTracerProvider return TracerProvider
@@ -60,15 +59,9 @@ func main() {
 	signal.Notify(sigCh, os.Interrupt)
 
 	errCh := make(chan error)
-
-	f, err := os.Create("traces.txt")
-	if err != nil {
-		l.Fatal(err)
-	}
-	defer f.Close()
 	ctx := context.Background()
 
-	exp, err := newExporter(f)
+	exp, err := newExporter("http://127.0.0.1:14268/api/traces")
 	if err != nil {
 		log.Fatalf("failed to initialize exporter: %v", err)
 	}
@@ -94,11 +87,19 @@ func main() {
 	}
 }
 
+func HelloHandler(w http.ResponseWriter, r *http.Request) {
+	_, span := tracer.Start(r.Context(), "hello")
+	defer span.End()
+	log.Println("bs service")
+	fmt.Fprintf(w, "hello bs service")
+}
+
 func runApp() {
-	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		_, span := tracer.Start(context.Background(), "hello")
-		defer span.End()
-		fmt.Fprintf(w, "hello bs service")
-	})
+	http.Handle("/hello", otelhttp.NewHandler(
+		http.HandlerFunc(HelloHandler), "bs service hello",
+		// 下面两行可以不设置，和默认值一致
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
+		otelhttp.WithPropagators(otel.GetTextMapPropagator()),
+	))
 	log.Fatal(http.ListenAndServe(":8089", nil))
 }

@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 
+	"github.com/ilaziness/gopkg/opentelemetry/advanced/httpclient"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -25,13 +26,12 @@ const serviceId = "AsService"
 // tracer Tracer
 var tracer trace.Tracer
 
-// newExport create export
-func newExporter(w io.Writer) (sdktrace.SpanExporter, error) {
-	return stdouttrace.New(
-		stdouttrace.WithWriter(w),
-		stdouttrace.WithPrettyPrint(),
-		stdouttrace.WithoutTimestamps(),
-	)
+func newExporter(url string) (sdktrace.SpanExporter, error) {
+	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
+	if err != nil {
+		return nil, err
+	}
+	return exp, nil
 }
 
 // newTracerProvider return TracerProvider
@@ -61,15 +61,9 @@ func main() {
 	signal.Notify(sigCh, os.Interrupt)
 
 	errCh := make(chan error)
-
-	f, err := os.Create("traces.txt")
-	if err != nil {
-		l.Fatal(err)
-	}
-	defer f.Close()
 	ctx := context.Background()
 
-	exp, err := newExporter(f)
+	exp, err := newExporter("http://127.0.0.1:14268/api/traces")
 	if err != nil {
 		log.Fatalf("failed to initialize exporter: %v", err)
 	}
@@ -79,7 +73,11 @@ func main() {
 	defer func() { _ = tp.Shutdown(ctx) }()
 
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	//otel.SetTextMapPropagator(propagation.TraceContext{})
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
 	tracer = tp.Tracer(serviceId)
 
 	go runApp()
@@ -96,8 +94,19 @@ func main() {
 }
 
 func HelloHandler(w http.ResponseWriter, r *http.Request) {
-	_, span := tracer.Start(context.Background(), "hello")
+	ctx, span := tracer.Start(r.Context(), "hello")
 	defer span.End()
+
+	// 获取自定义值
+	bagg := baggage.FromContext(ctx)
+	log.Println(bagg.String(), bagg.Member("memberId").Value())
+
+	data, err := httpclient.Get(ctx, httpclient.ServiceNameBs, "/hello")
+	if err != nil {
+		log.Println("as get error:", err)
+	} else {
+		log.Println("as get data:", string(data))
+	}
 	fmt.Fprintf(w, "hello as service")
 }
 

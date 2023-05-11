@@ -108,6 +108,7 @@ func runApp() {
 		bgg, _ := baggage.New(member)
 
 		data, err := httpclient.Get(baggage.ContextWithBaggage(ctx, bgg), httpclient.ServiceNameAs, "/hello")
+		//data, err := httpclient.Get(ctx, httpclient.ServiceNameAs, "/hello")
 		if err != nil {
 			log.Println("main get error:", err)
 		} else {

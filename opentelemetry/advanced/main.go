@@ -7,8 +7,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
+	"github.com/ilaziness/gopkg/opentelemetry/advanced/api"
 	"github.com/ilaziness/gopkg/opentelemetry/advanced/httpclient"
+	"github.com/ilaziness/gopkg/opentelemetry/advanced/rpcall"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
@@ -18,6 +22,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // serviceId
@@ -98,6 +104,20 @@ func main() {
 
 // runApp 启动http服务，设置了一个handler
 func runApp() {
+	// rpc client
+	addr := "127.0.0.1:7000"
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
+	)
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	rpcclient := api.NewAsRpcClient(conn)
+	_, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
 		ctx, span := tracer.Start(context.Background(), "hello")
 		defer span.End()
@@ -107,6 +127,7 @@ func runApp() {
 		member, _ := baggage.NewMember("memberId", "234324")
 		bgg, _ := baggage.New(member)
 
+		// http call
 		data, err := httpclient.Get(baggage.ContextWithBaggage(ctx, bgg), httpclient.ServiceNameAs, "/hello")
 		//data, err := httpclient.Get(ctx, httpclient.ServiceNameAs, "/hello")
 		if err != nil {
@@ -114,7 +135,15 @@ func runApp() {
 		} else {
 			log.Println("main get data:", string(data))
 		}
+
+		// 新增一条rpc的span
+		ctx, span = tracer.Start(ctx, "main hello call as")
+		defer span.End()
+		// rpc call 调用as服务的Test
+		rpcall.CallAsTest(ctx, rpcclient)
+
 		fmt.Fprintf(w, "hello")
 	})
+	log.Println("http server listening at port", "8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 
+	"github.com/ilaziness/gopkg/opentelemetry/advanced/api"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -16,6 +19,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 // serviceId
@@ -75,6 +79,7 @@ func main() {
 	tracer = tp.Tracer(serviceId)
 
 	go runApp()
+	go runRpcServer()
 
 	select {
 	case <-sigCh:
@@ -94,6 +99,7 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "hello bs service")
 }
 
+// runApp 启动http服务
 func runApp() {
 	http.Handle("/hello", otelhttp.NewHandler(
 		http.HandlerFunc(HelloHandler), "bs service hello",
@@ -101,5 +107,35 @@ func runApp() {
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
 		otelhttp.WithPropagators(otel.GetTextMapPropagator()),
 	))
+	log.Println("http server listening at port", "8089")
 	log.Fatal(http.ListenAndServe(":8089", nil))
+}
+
+// runRpcServer 启动RPC服务
+func runRpcServer() {
+	lis, err := net.Listen("tcp", ":7001")
+	if err != nil {
+		log.Fatal(err)
+	}
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+	)
+	api.RegisterBsRpcServer(s, &BsRpc{})
+	log.Println("rpc server listening at port", "7000")
+	if err := s.Serve(lis); err != nil {
+		log.Fatal(err)
+	}
+}
+
+type BsRpc struct {
+	api.UnimplementedBsRpcServer
+}
+
+// Test test rpc服务接口
+func (a *BsRpc) Test(ctx context.Context, req *api.Req) (*api.Resp, error) {
+	_, span := tracer.Start(ctx, "bs rpc Test")
+	defer span.End()
+	log.Println("bs rpc server receive data:", req.GetA(), req.GetB())
+	return &api.Resp{S: "this is bs rpc server response"}, nil
 }

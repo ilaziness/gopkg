@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"crypto/md5"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tidwall/gjson"
 )
 
 type Igxe struct {
@@ -113,9 +114,15 @@ func (i *Igxe) getList(page int) {
 		log.Println("sleep 5s")
 		time.Sleep(time.Second * 5)
 	}
-	reqUrl := fmt.Sprintf("https://www.igxe.cn/api/v2/product/search/730?app_id=730&sort=1&page_no=%d&page_size=20", page)
+	reqUrl := fmt.Sprintf("https://www.igxe.cn/api/v2/product/search/730?app_id=730&sort=3&page_no=%d&page_size=20", page)
 	log.Println(reqUrl)
-	resp, err := i.httpClient.Do(i.newReqest(reqUrl, false))
+	req := i.newReqest(reqUrl, false)
+	if page <= 2 {
+		req.Header.Set("Referer", "https://www.igxe.cn/market/csgo?sort=3")
+	} else {
+		req.Header.Set("Referer", fmt.Sprintf("https://www.igxe.cn/market/csgo?sort=3&page_no=%d&page_size=20", page-1))
+	}
+	resp, err := i.httpClient.Do(req)
 	if err != nil {
 		log.Println(err, reqUrl)
 		return

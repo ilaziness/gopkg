@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -9,7 +10,16 @@ import (
 	"encoding/pem"
 	"log"
 	"os"
+
+	pkcs12 "software.sslmate.com/src/go-pkcs12"
 )
+
+// 文件格式说明
+// der格式是保存公私钥的编码格式，是二进制的，当前目录两个txt文件内容就是der格式base64编码后的内容
+// pem，der文件base64编码后得到pem格式内容，文件扩展名包括PEM、CRT和CER,".cer" 或者 ".crt" 表示一个证书，使用".key"表示是一个密钥。
+// der和pem都是内容编码格式
+// 当前目录.crt文件，crt意思是证书文件，内容可以是der或者pem编码格式
+// 证书文件一般后缀Linux系统使用CRT（pem格式），Windows系统使用CER（der格式）
 
 type Test struct {
 	A string
@@ -35,6 +45,8 @@ func main() {
 	cipher = encryptByPemKey(text)
 	log.Println("密文：", base64.StdEncoding.EncodeToString(cipher))
 	log.Println("解密：", string(decryptByPemKey(cipher)))
+
+	rsaSingFromPfxKey()
 }
 
 var (
@@ -165,4 +177,49 @@ func decryptByPemKey(cipher []byte) (text []byte) {
 		return
 	}
 	return
+}
+
+func rsaSingFromPfxKey() {
+	data := "测试数据"
+
+	certPath := "./20190801.3300000002925831.pfx"
+	certBytes, err := os.ReadFile(certPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	pkey, _, _ := pkcs12.Decode(certBytes, "123456")
+
+	// pfx文件提起私钥：openssl pkcs12 -in 20190801.3300000002925831.pfx -out my.key -nocerts -nodes
+	// -nodes 参数提取的私钥文件不加密码
+	// keybyte, _ := os.ReadFile("./my.key")
+	// block, _ := pem.Decode(keybyte)
+	// pkey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	privateKey, ok := pkey.(*rsa.PrivateKey)
+	if !ok {
+		log.Println("parse private key fail")
+		return
+	}
+
+	hashed := sha256.Sum256([]byte(data))
+	signature, err := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, hashed[:])
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	// 验证签名
+	publicKey := privateKey.PublicKey
+	err = rsa.VerifyPKCS1v15(&publicKey, crypto.SHA256, hashed[:], signature)
+	if err != nil {
+		log.Println("verify fail", err)
+	} else {
+		log.Println("verify success")
+	}
+
+	// 编码签名
+	log.Println(base64.StdEncoding.EncodeToString(signature))
 }

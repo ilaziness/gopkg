@@ -189,7 +189,7 @@ func rsaSingFromPfxKey() {
 	}
 	pkey, _, _ := pkcs12.Decode(certBytes, "123456")
 
-	// pfx文件提起私钥：openssl pkcs12 -in 20190801.3300000002925831.pfx -out my.key -nocerts -nodes
+	// pfx文件提取私钥：openssl pkcs12 -in 20190801.3300000002925831.pfx -out my.key -nocerts -nodes
 	// -nodes 参数提取的私钥文件不加密码
 	// keybyte, _ := os.ReadFile("./my.key")
 	// block, _ := pem.Decode(keybyte)

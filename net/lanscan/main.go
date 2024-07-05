@@ -45,6 +45,8 @@ var LanIpInfos *sync.Map = &sync.Map{}
 
 // https://haydz.github.io/2020/07/06/Go-Windows-NIC.html
 // https://github.com/google/gopacket/issues/456
+
+// 源项目：https://github.com/timest/goscan
 func main() {
 	// 指定要扫描的的网卡名称
 	var scanIfName string

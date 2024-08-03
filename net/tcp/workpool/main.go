@@ -20,7 +20,7 @@ func main() {
 		return
 	}
 
-	workerPool = newPool(100)
+	workerPool = newPool(1000)
 	workerPool.start()
 	defer workerPool.close()
 
@@ -67,10 +67,6 @@ func hancleConn(conn net.Conn) {
 	// read 已关闭无数据的连接会io.EOF错误
 	_, err := conn.Read(data)
 	if err != nil {
-		if err := epoller.Remove(conn); err != nil {
-			log.Printf("failed to remove %v", err)
-		}
-		log.Println("conn close")
 		conn.Close()
 		return
 	}

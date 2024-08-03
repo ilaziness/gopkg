@@ -24,13 +24,13 @@ func client(n int, addr string) {
 	}
 	defer conn.Close()
 
-	deadline := time.Now().Add(time.Second * 20)
+	deadline := time.Now().Add(time.Second * 10)
 	for {
 		if time.Now().After(deadline) {
 			log.Printf("client %d exit\n", n)
 			return
 		}
-		time.Sleep(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 500)
 		_, err = conn.Write([]byte("client hello"))
 		if err != nil {
 			log.Println(err)

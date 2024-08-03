@@ -63,6 +63,7 @@ func main() {
 func start() {
 	var buf = make([]byte, 20)
 	for {
+		// Wait 会阻塞等待消息就绪
 		connections, err := epoller.Wait()
 		if err != nil {
 			log.Printf("failed to epoll wait %v", err)

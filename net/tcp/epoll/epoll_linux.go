@@ -15,7 +15,7 @@ import (
 
 // unix.EpollCreate1: 用于创建并返回一个epfd句柄，后续关于fd的添加删除等操作都依据这个句柄。
 // unix.EpollCtl: 用于向epfd添加，删除，修改要监听的fd。
-// unix.EpollWait: 传入创建返回的epfd句柄，以及超时时间，返回就绪的fd句柄。
+// unix.EpollWait: 传入创建返回的epfd句柄，以及超时时间，等待返回就绪的fd句柄。
 
 type epoll struct {
 	fd          int

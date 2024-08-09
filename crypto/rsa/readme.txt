@@ -10,3 +10,8 @@ openssl pkcs12 -in ./server.pfx -clcerts -nokeys -out ./server.crt
 openssl pkcs12 -in ./server.pfx -nocerts -nodes -out ./server.key
 1、-nocerts：不输出任何证书。
 2、-nodes：一直对私钥不加密。
+
+
+如果报错加上-legacy参数，报错下面:
+Error outputting keys and certificates
+4077214A00710000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported....................

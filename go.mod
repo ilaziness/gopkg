@@ -12,6 +12,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pquerna/otp v1.3.0
 	github.com/prometheus/client_golang v1.15.1
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/tidwall/gjson v1.17.0
 	github.com/timest/gomanuf v0.0.0-20230209100256-466f396c9305
 	go.etcd.io/etcd/api/v3 v3.5.6
@@ -27,7 +28,9 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.38.1
 	go.opentelemetry.io/otel/trace v1.15.1
 	go.uber.org/zap v1.17.0
+	golang.org/x/image v0.19.0
 	golang.org/x/net v0.27.0
+	golang.org/x/sys v0.22.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
 	software.sslmate.com/src/go-pkcs12 v0.4.0
@@ -65,8 +68,7 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )

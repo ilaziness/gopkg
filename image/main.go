@@ -15,12 +15,8 @@ import (
 	"golang.org/x/image/font/gofont/goitalic"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
+	// github.com/golang/freetype
 )
-
-func s() []int {
-	log.Println(123)
-	return []int{5, 6, 1}
-}
 
 func main() {
 	// 蒙版图像

@@ -1,6 +1,6 @@
 module github.com/ilaziness/gopkg
 
-go 1.20
+go 1.23
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20230802225258-3cf4e6d46a89
@@ -68,6 +68,7 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/sync v0.9.0
 	golang.org/x/text v0.17.0 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

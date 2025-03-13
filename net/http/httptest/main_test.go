@@ -13,6 +13,8 @@ import (
 // 创建模拟 HTTP 请求：用于测试服务器端代码。
 // 捕获 HTTP 响应：方便检查响应内容。
 
+// httptest.NewRecorder 实现了http.ResponseWriter用来创建虚假的响应
+
 func helloHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Hello, World!")
 }

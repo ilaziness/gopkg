@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SSE Example</title>
+</head>
+<body>
+<h1>Server-Sent Events Example</h1>
+<div id="messages"></div>
+
+<script>
+    // const eventSource = new EventSource('http://localhost:8080/events');
+    const eventSource = new EventSource('http://localhost:8080/long');
+
+    eventSource.onmessage = function(event) {
+        const messagesDiv = document.getElementById('messages');
+        const newMessage = document.createElement('div');
+        newMessage.textContent = `New message: ${event.data}`;
+        messagesDiv.appendChild(newMessage);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // 自动滚动到最新消息
+    };
+
+    eventSource.onerror = function(error) {
+        console.error('EventSource failed:', error);
+        eventSource.close();
+    };
+
+    eventSource.onopen = function() {
+        console.log("SSE connection established.");
+    };
+</script>
+</body>
+</html>

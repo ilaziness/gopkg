@@ -37,6 +37,11 @@ require (
 )
 
 require (
+	github.com/jmoiron/sqlx v1.4.0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.28 // indirect
+)
+
+require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

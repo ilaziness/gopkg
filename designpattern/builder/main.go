@@ -53,8 +53,12 @@ func (b *MessageBuilder) WithBody(d map[string]string) *MessageBuilder {
 	return b
 }
 
+func (b *MessageBuilder) Build() *Message {
+	return b.Msg
+}
+
 func main() {
-	msg := Build().WithSchma("https").WithAddr("127.0.0.1").WithPort(9000).WithBody(map[string]string{"a": "123"})
-	fmt.Printf("%+v\n", msg.Msg.Header)
-	fmt.Printf("%+v\n", msg.Msg.Body)
+	msg := Build().WithSchma("https").WithAddr("127.0.0.1").WithPort(9000).WithBody(map[string]string{"a": "123"}).Build()
+	fmt.Printf("%+v\n", msg.Header)
+	fmt.Printf("%+v\n", msg.Body)
 }

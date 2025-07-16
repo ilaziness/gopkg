@@ -49,7 +49,7 @@ func Instance() *messagePool {
 		msgPool2 = &messagePool{
 			pool: &sync.Pool{
 				New: func() any {
-					return Message{}
+					return &Message{}
 				},
 			},
 		}
@@ -72,11 +72,13 @@ func Instance2() *messagePool {
 			msgPool2 = &messagePool{
 				pool: &sync.Pool{
 					New: func() any {
-						return Message{}
+						return &Message{}
 					},
 				},
 			}
 		}
+	} else {
+		mutex.RUnlock()
 	}
 
 	return msgPool2

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Streaming HTTP Client (NDJSON)</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      min-height: 100px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .tool-call {
+      color: #d32f2f;
+      font-weight: bold;
+    }
+    .tool-result {
+      color: #1976d2;
+      font-style: italic;
+    }
+    .done {
+      color: #388e3c;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Streaming HTTP Client (NDJSON)</h1>
+  <button id="startBtn">Start Streaming</button>
+  <button id="stopBtn" disabled>Stop</button>
+
+  <div id="output"></div>
+
+  <script>
+    const output = document.getElementById('output');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    let abortController = null;
+
+    async function startStream() {
+      // 清空之前的内容
+      output.innerHTML = '';
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+
+      // 创建 AbortController 用于取消请求
+      abortController = new AbortController();
+
+      try {
+        const response = await fetch('http://localhost:8080/stream2', {
+          method: 'GET',
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // 处理按行分割的 NDJSON
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // 保留不完整的最后一行
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            try {
+              const msg = JSON.parse(line);
+              displayMessage(msg);
+            } catch (e) {
+              console.error('Failed to parse JSON:', line, e);
+              output.innerHTML += `<div style="color:red">[Parse Error] ${line}</div>`;
+            }
+          }
+        }
+
+        // 处理缓冲区中剩余的最后一行（如果完整）
+        if (buffer.trim()) {
+          try {
+            const msg = JSON.parse(buffer);
+            displayMessage(msg);
+          } catch (e) {
+            console.error('Final buffer parse error:', buffer);
+          }
+        }
+
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          output.innerHTML += '\n[Stream canceled by user]';
+        } else {
+          console.error('Fetch error:', error);
+          output.innerHTML += `\n[Error] ${error.message}`;
+        }
+      } finally {
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        abortController = null;
+      }
+    }
+
+    function displayMessage(msg) {
+      let html = '';
+      switch (msg.type) {
+        case 'message':
+          html = `<div>${msg.content || ''}</div>`;
+          break;
+        case 'tool_call':
+          html = `<div class="tool-call">🛠️ Tool Call: ${msg.tool_name}(${JSON.stringify(msg.arguments)})</div>`;
+          break;
+        case 'tool_result':
+          html = `<div class="tool-result">✅ Tool Result (${msg.tool_name}): ${msg.result}</div>`;
+          break;
+        case 'done':
+          html = `<div class="done">🔚 Stream completed.</div>`;
+          break;
+        default:
+          html = `<div>[Unknown type: ${msg.type}] ${JSON.stringify(msg)}</div>`;
+      }
+      output.innerHTML += html;
+      // 自动滚动到底部
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function stopStream() {
+      if (abortController) {
+        abortController.abort();
+      }
+    }
+
+    startBtn.addEventListener('click', startStream);
+    stopBtn.addEventListener('click', stopStream);
+  </script>
+</body>
+</html>

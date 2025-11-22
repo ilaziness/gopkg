@@ -36,10 +36,11 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 		// 每一条消息用\n\n分割
 		// 一条消息的每一行格式：[field]: value\n
 		// field取值：
-		//   data：消息内容
-		//   id：消息ID
-		//   retry：重试时间
-		//   event：事件名称，默认是message，也就是客户端的onmessage事件，可以自定义然后用addEventListener来监听
+		//   data：消息内容，必须
+		//   id：消息ID，可选
+		//   retry：重试时间，可选
+		//   event：事件名称，可选，默认是message，也就是客户端的onmessage事件，可以自定义然后客户端用addEventListener来监听
+		// fmt.Fprintf(w, "id: %d\n", 1)
 		fmt.Fprintf(w, "data: %s\n\n", time.Now().Format(time.RFC3339))
 		flusher.Flush() // 立即将数据发送给客户端
 		time.Sleep(1 * time.Second)

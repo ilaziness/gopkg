@@ -7,10 +7,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
+	"github.com/quic-go/quic-go/http3/qlog"
 )
 
 func streamHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,8 +56,15 @@ func main() {
 			Handler: mux,
 			Addr:    ":443",
 			// TLSConfig:  http3.ConfigureTLSConfig(&tls.Config{}),
-			QUICConfig: &quic.Config{},
+			QUICConfig: &quic.Config{
+				// qlog是QUIC的调试日志格式，用于调试和分析QUIC的连接行为，https://quic-go.net/docs/quic/qlog/
+				Tracer: qlog.DefaultConnectionTracer,
+			},
 		}
+
+		// 默认的Tracer实现会把日志输出到QLOGDIR环境变量指定的目录，目录如果不存在会自动创建
+		// 日志文件在线分析：https://qvis.quictools.info/
+		os.Setenv("QLOGDIR", "./qlog")
 
 		log.Println("HTTP/3 server running on :443")
 		log.Fatal(server.ListenAndServeTLS(certPath, keyPath))

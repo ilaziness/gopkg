@@ -24,8 +24,14 @@ type GetCurrentTimeOutput struct {
 
 // GetCurrentTime 获取当前时间的工具，返回参数没有复杂结构也可以简单地定义为string这种简单类型
 func GetCurrentTime(_ context.Context, input GetCurrentTimeInput) (GetCurrentTimeOutput, error) {
-	t := time.Now().In(time.FixedZone(input.Timezone, 8*60*60)).Format(time.RFC3339)
-	return GetCurrentTimeOutput{Time: t}, nil
+	t := time.Now()
+	// 校验时区参数是否合法
+	tz, err := time.LoadLocation(input.Timezone)
+	if err == nil {
+		t = t.In(tz)
+	}
+	ts := t.Format(time.RFC3339)
+	return GetCurrentTimeOutput{Time: ts}, nil
 }
 
 // GetCurrentTimeTool 创建工具

@@ -85,6 +85,7 @@ func main() {
 	}
 	// 将远端输出打印到本地 stdout（或按需解析）
 	go io.Copy(os.Stdout, stdout)
+	// Shell 启动一个交互式 shell。
 	err = session2.Shell()
 	if err != nil {
 		panic("failed to start shell: " + err.Error())
@@ -92,7 +93,7 @@ func main() {
 	// 连续写入多条命令（注意以换行结束）
 	stdin.Write([]byte("whoami\n"))
 	stdin.Write([]byte("pwd\n"))
-	// 退出 shell 并等待会话结束
+	// 退出 shell 并等待会话结束，没有退出后面Wait会阻塞等待结束
 	stdin.Write([]byte("exit\n"))
 	stdin.Close() // 可选, 关闭 stdin，通知远端 shell 退出
 	if err := session2.Wait(); err != nil {
@@ -108,6 +109,10 @@ func main() {
 		panic("Failed to create session: " + err.Error())
 	}
 	defer session3.Close()
+	// RequestPty 请求一个伪终端。
+	// 第一个参数是终端类型，通常为"xterm"。
+	// 第二个和第三个参数分别是终端的宽度和高度（以字符为单位）。
+	// 第四个参数是一个ssh.TerminalModes映射，用于设置终端模式。
 	if err := session3.RequestPty("xterm", 80, 40, ssh.TerminalModes{
 		ssh.ECHO:          1,
 		ssh.TTY_OP_ISPEED: 14400,

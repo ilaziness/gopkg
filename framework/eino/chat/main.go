@@ -1,3 +1,4 @@
+// Package main 实现了一个聊天应用，展示了如何使用模板生成消息、调用聊天模型，并集成工具调用功能。
 package main
 
 import (

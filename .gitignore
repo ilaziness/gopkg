@@ -16,3 +16,4 @@
 *.csv
 *.xlsx
 .idea
+.genkit

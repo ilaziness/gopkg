@@ -485,5 +485,5 @@ curl -X POST "http://localhost:3400/menuSuggestionFlow" \
 # 当前示例使用 Ollama 插件，需运行本地 Ollama 服务
 # 或修改为其他模型插件
 
-cd framework/genkit/flowsdemo
+cd framework/genkit/01-flows
 go run .
